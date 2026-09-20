@@ -79,9 +79,6 @@ jobs:
           cd gta9
           export PATH=$HOME/toolchain/clang/bin:$PATH
           make O=out ARCH=arm64 gta9_00_defconfig
-          # overlay config MTK
-          make O=out ARCH=arm64 \
-            entry_level.config ot11.config ot11_data.config ot11_wifi.config
           # KernelSU + pendukung
           scripts/config --file out/.config \
             -e CONFIG_KSU \
@@ -98,6 +95,8 @@ jobs:
             --disable CONFIG_DEBUG_INFO_SPLIT \
             --disable CONFIG_DEBUG_INFO_REDUCED \
             --disable CONFIG_DEBUG_INFO_DWARF4
+          # Jawab otomatis semua opsi (NEW) dengan nilai default — hilangkan prompt "Error in reading"
+          make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
 
       - name: Compile kernel
@@ -115,7 +114,7 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            KCFLAGS="-w" \
+            KCFLAGS="-w -Wno-incompatible-function-pointer-types" \
             Image 2>&1 | tee $GITHUB_WORKSPACE/compile.log
           if [ ! -f out/arch/arm64/boot/Image ]; then
             echo "::error::Build failed — kernel Image not found!"
