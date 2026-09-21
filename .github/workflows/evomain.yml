@@ -122,16 +122,17 @@ jobs:
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile.inc 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild.inc 2>/dev/null || true
           echo "ccci_fsm_scp dikeluarkan."
-          # 4) Keluarkan camera_mfb.c (struct MFB_MapTable tidak pernah didefinisikan)
+          # 4) Keluarkan camera_mfb.c
           sed -i '/camera_mfb/d' drivers/misc/mediatek/cameraisp/mfb/isp_6s/Makefile 2>/dev/null || true
           sed -i '/camera_mfb/d' drivers/misc/mediatek/cameraisp/mfb/Makefile 2>/dev/null || true
           echo "camera_mfb dikeluarkan."
-          # 5) lpm: asm/cpuidle.h pakai EOPNOTSUPP tapi tidak include errno — sisipkan include
-          sed -i '1i #include <linux/errno.h>' arch/arm64/include/asm/cpuidle.h
-          echo "cpuidle.h patched (errno include)."
-          # 6) swpm: swpm_perf_arm_pmu.c pakai API perf lama — keluarkan dari build
-          grep -rl 'swpm_perf_arm_pmu' drivers/misc/mediatek/swpm/ 2>/dev/null | xargs -r sed -i '/swpm_perf_arm_pmu/d'
-          echo "swpm_perf_arm_pmu dikeluarkan."
+          # 5) lpm: asm/cpuidle.h butuh errno include
+          sed -i '1i #include <linux/errno.h>' arch/arm64/include/asm/cpuidle.h 2>/dev/null || true
+          echo "cpuidle.h patched."
+          # 6) Keluarkan SELURUH swpm (telemetri daya) — pakai API perf lama yang tidak tersedia
+          #    Bukan cuma swpm_perf_arm_pmu, tapi semua file swpm yang error.
+          sed -i '/swpm/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
+          echo "swpm seluruhnya dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
@@ -161,7 +162,7 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
           cd AnyKernel3
-          rm -rf .git .github *.md
+          rm -rf .git .github *.rd
           cp $GITHUB_WORKSPACE/gta9/out/arch/arm64/boot/Image ./
           printf '%s\n' \
             'properties() {' \
