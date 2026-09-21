@@ -110,31 +110,21 @@ jobs:
       - name: Prepare stubs & patches
         run: |
           cd gta9
-          # 1) Stub disp_arr.h — delimiter DISP_EOF di kolom 0
-          cat > drivers/gpu/mediatek/ged/src/disp_arr.h <<'DISP_EOF'
-#ifndef __DISP_ARR_H__
-#define __DISP_ARR_H__
-/* Stub dibuat CI workflow — file asli di-generate build system Samsung */
-#endif
-DISP_EOF
+          # 1) Stub disp_arr.h (printf — tanpa heredoc)
+          printf '#ifndef __DISP_ARR_H__\n#define __DISP_ARR_H__\n/* Stub dibuat CI workflow */\n#endif\n' > drivers/gpu/mediatek/ged/src/disp_arr.h
           echo "Stub disp_arr.h created."
           # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
           sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
           echo "blocktag patched."
-          # 3) scp_ipi.h untuk ccci_fsm_scp — delimiter SCP_EOF di kolom 0
+          # 3) scp_ipi.h untuk ccci_fsm_scp
           echo "=== Search scp_ipi.h in tree ==="
           SCP_HDR=$(find . -name "scp_ipi.h" 2>/dev/null | head -1)
           if [ -n "$SCP_HDR" ]; then
             echo "Found: $SCP_HDR"
             cp "$SCP_HDR" drivers/misc/mediatek/eccci/fsm/scp_ipi.h
           else
-            echo "Not found — creating stub"
-            cat > drivers/misc/mediatek/eccci/fsm/scp_ipi.h <<'SCP_EOF'
-#ifndef __SCP_IPI_H__
-#define __SCP_IPI_H__
-/* Stub untuk CI — header SCP MediaTek tidak tersedia di tree ini */
-#endif
-SCP_EOF
+            echo "Not found - creating stub"
+            printf '#ifndef __SCP_IPI_H__\n#define __SCP_IPI_H__\n/* Stub untuk CI */\n#endif\n' > drivers/misc/mediatek/eccci/fsm/scp_ipi.h
           fi
           echo "=== scp_ipi calls in ccci_fsm_scp.c (diagnostik) ==="
           grep -n "scp_ipi" drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c | head -20 || echo "  (no scp_ipi calls found)"
@@ -170,24 +160,23 @@ SCP_EOF
           cd AnyKernel3
           rm -rf .git .github *.md
           cp $GITHUB_WORKSPACE/gta9/out/arch/arm64/boot/Image ./
-          cat > anykernel.sh << 'AKEOF'
-          properties() {
-            kernel.string=Galaxy Tab A9 (SM-X110) + KernelSU
-            do.devicecheck=1
-            do.modules=0
-            do.cleanup=1
-            do.cleanuponabort=1
-            device.name1=gta9
-            device.name2=gta9wifi
-            device.name3=SM-X110
-            supported.versions=13-14
-          }
-          block=auto
-          is_slot_device=0
-          . tools/ak3-core.sh
-          split_boot
-          flash_boot
-          AKEOF
+          printf '%s\n' \
+            'properties() {' \
+            '  kernel.string=Galaxy Tab A9 (SM-X110) + KernelSU' \
+            '  do.devicecheck=1' \
+            '  do.modules=0' \
+            '  do.cleanup=1' \
+            '  do.cleanuponabort=1' \
+            '  device.name1=gta9' \
+            '  device.name2=gta9wifi' \
+            '  device.name3=SM-X110' \
+            '  supported.versions=13-14' \
+            '}' \
+            'block=auto' \
+            'is_slot_device=0' \
+            '. tools/ak3-core.sh' \
+            'split_boot' \
+            'flash_boot' > anykernel.sh
           BUILD_DATE=$(date +%Y%m%d-%H%M)
           ZIP_NAME="GTA9-KernelSU-${{ steps.ksu_info.outputs.ksu_version }}-${BUILD_DATE}.zip"
           zip -r9 $GITHUB_WORKSPACE/$ZIP_NAME . -x '.git*'
