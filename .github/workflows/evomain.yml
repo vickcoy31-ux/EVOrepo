@@ -116,19 +116,28 @@ jobs:
           # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
           sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
           echo "blocktag patched."
-          # 3) scp_ipi.h untuk ccci_fsm_scp
-          echo "=== Search scp_ipi.h in tree ==="
+          # 3) scp_ipi.h — cari di tree dulu
           SCP_HDR=$(find . -name "scp_ipi.h" 2>/dev/null | head -1)
           if [ -n "$SCP_HDR" ]; then
-            echo "Found: $SCP_HDR"
+            echo "scp_ipi.h found: $SCP_HDR"
             cp "$SCP_HDR" drivers/misc/mediatek/eccci/fsm/scp_ipi.h
           else
-            echo "Not found - creating stub"
+            echo "scp_ipi.h not found — creating stub"
             printf '#ifndef __SCP_IPI_H__\n#define __SCP_IPI_H__\n/* Stub untuk CI */\n#endif\n' > drivers/misc/mediatek/eccci/fsm/scp_ipi.h
+          fi
+          # 4) scp_ipi_wrapper.h — di-include scp_ipi.h asli; cari di tree, kalau tidak ada buat stub
+          echo "=== Search scp_ipi_wrapper.h in tree ==="
+          SCP_WRAP=$(find . -name "scp_ipi_wrapper.h" 2>/dev/null | head -1)
+          if [ -n "$SCP_WRAP" ]; then
+            echo "scp_ipi_wrapper.h found: $SCP_WRAP"
+            cp "$SCP_WRAP" drivers/misc/mediatek/eccci/fsm/scp_ipi_wrapper.h
+          else
+            echo "scp_ipi_wrapper.h not found — creating stub"
+            printf '#ifndef __SCP_IPI_WRAPPER_H__\n#define __SCP_IPI_WRAPPER_H__\n/* Stub untuk CI */\n#endif\n' > drivers/misc/mediatek/eccci/fsm/scp_ipi_wrapper.h
           fi
           echo "=== scp_ipi calls in ccci_fsm_scp.c (diagnostik) ==="
           grep -n "scp_ipi" drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c | head -20 || echo "  (no scp_ipi calls found)"
-          echo "=== ccci_fsm_scp.c includes (diagnostik) ==="
+          echo "=== includes in ccci_fsm_scp.c (diagnostik) ==="
           sed -n '1,25p' drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c
 
       - name: Compile kernel
