@@ -107,17 +107,20 @@ jobs:
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
 
-      - name: Prepare disp_arr.h stub
+      - name: Prepare stubs & patches
         run: |
           cd gta9
+          # Stub disp_arr.h (di-generate build.sh Samsung, kita buat manual)
           cat > drivers/gpu/mediatek/ged/src/disp_arr.h << 'HDR_EOF'
           #ifndef __DISP_ARR_H__
           #define __DISP_ARR_H__
           /* Stub dibuat CI workflow — file asli di-generate build system Samsung */
           #endif
           HDR_EOF
-          echo "Stub disp_arr.h created:"
-          ls -la drivers/gpu/mediatek/ged/src/disp_arr.h
+          echo "Stub disp_arr.h created."
+          # blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
+          sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
+          echo "blocktag patched (proc_compat_ioctl removed)."
 
       - name: Compile kernel
         run: |
