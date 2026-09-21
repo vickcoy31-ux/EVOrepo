@@ -1,116 +1,7 @@
-name: Build GTA9 Kernel with KernelSU
-
-on:
-  workflow_dispatch:
-    inputs:
-      kernelsu_tag:
-        description: 'KernelSU tag or "main" for latest'
-        required: false
-        default: 'main'
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout build repo
-        uses: actions/checkout@v4
-
-      - name: Set up swap space
-        uses: pierotofy/set-swap-space@master
-        with:
-          swap-size-gb: 12
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            bc bison build-essential ca-certificates cpio flex \
-            git kmod libelf-dev libssl-dev lz4 python3 \
-            zip wget curl sed binutils-aarch64-linux-gnu \
-            crossbuild-essential-arm64 clang lld llvm device-tree-compiler
-
-      - name: Clone kernel source
-        run: |
-          git clone --depth=1 -b 15.0 \
-            https://github.com/prabhatkrmishra/kernel_samsung_gta9.git gta9
-          cd gta9
-          git submodule sync --recursive
-          git submodule update --init --depth=1
-
-      - name: Fetch latest KernelSU version
-        id: ksu_info
-        run: |
-          TAG="${{ github.event.inputs.kernelsu_tag }}"
-          if [ "$TAG" = "main" ] || [ -z "$TAG" ]; then
-            LATEST=$(curl -s https://api.github.com/repos/tiann/KernelSU/releases/latest \
-              | grep '"tag_name"' | cut -d'"' -f4)
-            echo "ksu_version=$LATEST" >> $GITHUB_OUTPUT
-          else
-            echo "ksu_version=$TAG" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Integrate KernelSU via setup.sh
-        run: |
-          cd gta9
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s "${{ steps.ksu_info.outputs.ksu_version }}" || \
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s
-          ls -la KernelSU/kernel/ 2>/dev/null || ls -la drivers/kernelsu/ 2>/dev/null
-
-      - name: Setup Clang toolchain
-        run: |
-          mkdir -p $HOME/toolchain/clang
-          wget -q --show-progress \
-            https://github.com/ZyCromerZ/Clang/releases/download/14.0.6-20220902-full/Clang-14.0.6-x86_64.tar.gz \
-            -O /tmp/clang.tar.gz && \
-            tar -xzf /tmp/clang.tar.gz -C $HOME/toolchain/clang/ && rm /tmp/clang.tar.gz && \
-            echo "Clang ready." || {
-              echo "Download failed — falling back to system clang"
-              mkdir -p $HOME/toolchain/clang/bin
-              ln -sf /usr/bin/clang $HOME/toolchain/clang/bin/clang
-              ln -sf /usr/bin/ld.lld $HOME/toolchain/clang/bin/ld.lld
-              for t in /usr/bin/llvm-*; do [ -f "$t" ] && ln -sf "$t" $HOME/toolchain/clang/bin/; done
-            }
-          echo "$HOME/toolchain/clang/bin" >> $GITHUB_PATH
-
-      - name: Configure kernel
-        run: |
-          cd gta9
-          export PATH=$HOME/toolchain/clang/bin:$PATH
-          make O=out ARCH=arm64 gta9_00_defconfig
-          # KernelSU + pendukung
-          scripts/config --file out/.config \
-            -e CONFIG_KSU \
-            -e CONFIG_KPROBES \
-            -e CONFIG_HAVE_KPROBES \
-            -e CONFIG_OVERLAY_FS
-          scripts/config --file out/.config \
-            --set-str CONFIG_LOCALVERSION "-KSU-${{ steps.ksu_info.outputs.ksu_version }}" \
-            --disable CONFIG_LOCALVERSION_AUTO
-          # Perbaiki ssg-iosched: aktifkan blkcg
-          scripts/config --file out/.config \
-            -e CONFIG_CGROUPS \
-            -e CONFIG_BLK_CGROUP
-          # Perbaiki blocktag/ufs: lengkapi struct devfreq_simple_ondemand_data
-          scripts/config --file out/.config \
-            -e CONFIG_PM_DEVFREQ \
-            -e CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND
-          # Matikan Werror & debug
-          sed -i 's/^CONFIG_WERROR=y/CONFIG_WERROR=n/g' out/.config
-          scripts/config --file out/.config \
-            --disable CONFIG_DEBUG_INFO \
-            --disable CONFIG_DEBUG_INFO_SPLIT \
-            --disable CONFIG_DEBUG_INFO_REDUCED \
-            --disable CONFIG_DEBUG_INFO_DWARF4
-          # Jawab otomatis semua opsi (NEW) dengan nilai default
-          make O=out ARCH=arm64 olddefconfig
-          echo "Configuration complete."
-
       - name: Prepare stubs & patches
         run: |
           cd gta9
-          # Stub disp_arr.h (di-generate build.sh Samsung, kita buat manual)
+          # 1) Stub disp_arr.h (di-generate build.sh Samsung, kita buat manual)
           cat > drivers/gpu/mediatek/ged/src/disp_arr.h << 'HDR_EOF'
           #ifndef __DISP_ARR_H__
           #define __DISP_ARR_H__
@@ -118,72 +9,25 @@ jobs:
           #endif
           HDR_EOF
           echo "Stub disp_arr.h created."
-          # blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
+          # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
           sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
-          echo "blocktag patched (proc_compat_ioctl removed)."
-
-      - name: Compile kernel
-        run: |
-          cd gta9
-          export PATH=$HOME/toolchain/clang/bin:$PATH
-          make -j$(nproc --all) O=out ARCH=arm64 \
-            CC=clang \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            STRIP=llvm-strip \
-            LLVM=1 LLVM_IAS=1 \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            KCFLAGS="-w -Wno-incompatible-function-pointer-types -Wno-int-conversion" \
-            Image 2>&1 | tee $GITHUB_WORKSPACE/compile.log
-          if [ ! -f out/arch/arm64/boot/Image ]; then
-            echo "::error::Build failed — kernel Image not found!"
-            exit 1
+          echo "blocktag patched."
+          # 3) scp_ipi.h untuk ccci_fsm_scp: cari di tree dulu, kalau tidak ada buat stub
+          echo "=== Search scp_ipi.h in tree ==="
+          SCP_HDR=$(find . -name "scp_ipi.h" 2>/dev/null | head -1)
+          if [ -n "$SCP_HDR" ]; then
+            echo "Found: $SCP_HDR"
+            cp "$SCP_HDR" drivers/misc/mediatek/eccci/fsm/scp_ipi.h
+          else
+            echo "Not found — creating stub"
+            cat > drivers/misc/mediatek/eccci/fsm/scp_ipi.h << 'HDR_EOF'
+            #ifndef __SCP_IPI_H__
+            #define __SCP_IPI_H__
+            /* Stub untuk CI — header SCP MediaTek tidak tersedia di tree ini */
+            #endif
+            HDR_EOF
           fi
-          echo "Build successful! Image size: $(du -h out/arch/arm64/boot/Image | cut -f1)"
-
-      - name: Package with AnyKernel3
-        run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
-          cd AnyKernel3
-          rm -rf .git .github *.md
-          cp $GITHUB_WORKSPACE/gta9/out/arch/arm64/boot/Image ./
-          cat > anykernel.sh << 'AKEOF'
-          properties() {
-            kernel.string=Galaxy Tab A9 (SM-X110) + KernelSU
-            do.devicecheck=1
-            do.modules=0
-            do.cleanup=1
-            do.cleanuponabort=1
-            device.name1=gta9
-            device.name2=gta9wifi
-            device.name3=SM-X110
-            supported.versions=13-14
-          }
-          block=auto
-          is_slot_device=0
-          . tools/ak3-core.sh
-          split_boot
-          flash_boot
-          AKEOF
-          BUILD_DATE=$(date +%Y%m%d-%H%M)
-          ZIP_NAME="GTA9-KernelSU-${{ steps.ksu_info.outputs.ksu_version }}-${BUILD_DATE}.zip"
-          zip -r9 $GITHUB_WORKSPACE/$ZIP_NAME . -x '.git*'
-          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ZIP_NAME }}
-          path: ${{ env.ZIP_NAME }}
-          retention-days: 14
-
-      - name: Upload compile log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compile-log-${{ github.run_number }}
-          path: compile.log
+          echo "=== Does ccci_fsm_scp.c call scp_ipi functions? (diagnostik) ==="
+          grep -n "scp_ipi" drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c | head -20 || echo "  (no scp_ipi calls found)"
+          echo "=== ccci_fsm_scp.c includes (diagnostik) ==="
+          sed -n '1,25p' drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c
