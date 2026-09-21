@@ -38,8 +38,6 @@ jobs:
           cd gta9
           git submodule sync --recursive
           git submodule update --init --depth=1
-          echo "=== Overlay configs available ==="
-          ls arch/arm64/configs/ | grep -E "entry_level|ot11" || echo "overlay configs not in arch/arm64/configs"
 
       - name: Fetch latest KernelSU version
         id: ksu_info
@@ -81,8 +79,6 @@ jobs:
           cd gta9
           export PATH=$HOME/toolchain/clang/bin:$PATH
           make O=out ARCH=arm64 gta9_00_defconfig
-          # Gabungkan overlay config vendor (konfigurasi display/GPU ada di sini)
-          make O=out ARCH=arm64 entry_level.config ot11.config ot11_data.config ot11_wifi.config
           # KernelSU + pendukung
           scripts/config --file out/.config \
             -e CONFIG_KSU \
@@ -92,10 +88,14 @@ jobs:
           scripts/config --file out/.config \
             --set-str CONFIG_LOCALVERSION "-KSU-${{ steps.ksu_info.outputs.ksu_version }}" \
             --disable CONFIG_LOCALVERSION_AUTO
-          # Perbaiki ssg-iosched: aktifkan blkcg agar blkg_lookup memakai API asli
+          # Perbaiki ssg-iosched: aktifkan blkcg
           scripts/config --file out/.config \
             -e CONFIG_CGROUPS \
             -e CONFIG_BLK_CGROUP
+          # Matikan GED KPI (butuh disp_arr.h yang di-generate build.sh Samsung)
+          echo "=== GED configs ==="
+          grep -i "GED" out/.config || true
+          scripts/config --file out/.config -d CONFIG_MTK_GED_KPI
           # Matikan Werror & debug
           sed -i 's/^CONFIG_WERROR=y/CONFIG_WERROR=n/g' out/.config
           scripts/config --file out/.config \
