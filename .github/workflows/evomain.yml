@@ -107,7 +107,7 @@ jobs:
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
 
-      - name: Prepare stubs & patches
+            - name: Prepare stubs & patches
         run: |
           cd gta9
           # 1) Stub disp_arr.h (printf — tanpa heredoc)
@@ -116,25 +116,20 @@ jobs:
           # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
           sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
           echo "blocktag patched."
-          # 3) PUTUS RANTAI scp_ipi: stub mandiri + fungsi dummy
-          #    (rantai asli: scp_ipi.h -> scp_ipi_wrapper.h -> scp_ipi_pin.h -> ...)
-          ECCCI_FSM=drivers/misc/mediatek/eccci/fsm
-          FUNCS=$(grep -hoE 'scp_ipi_[a-zA-Z0-9_]+' drivers/misc/mediatek/eccci/ 2>/dev/null | sort -u)
-          {
-            printf '#ifndef __SCP_IPI_H__\n#define __SCP_IPI_H__\n'
-            printf '/* Stub CI: header SCP MediaTek tidak tersedia di tree */\n'
-            for fn in $FUNCS; do
-              printf 'static inline int %s(int x, ...) { (void)x; return 0; }\n' "$fn"
-            done
-            printf '#endif\n'
-          } > "$ECCCI_FSM/scp_ipi.h"
-          echo "Stub scp_ipi.h dibuat. Fungsi dummy: $FUNCS"
-          # Hapus header asli yang mungkin ter-copy sebelumnya (biar tidak menimpa stub)
-          rm -f "$ECCCI_FSM/scp_ipi_wrapper.h" "$ECCCI_FSM/scp_ipi_pin.h"
-          echo "=== scp_ipi calls in ccci_fsm_scp.c (diagnostik) ==="
-          grep -n "scp_ipi" drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c | head -20 || echo "  (no scp_ipi calls found)"
-          echo "=== includes in ccci_fsm_scp.c (diagnostik) ==="
-          sed -n '1,25p' drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c
+          # 3) KELUARKAN ccci_fsm_scp.c dari build (butuh header vendor SCP yang tidak tersedia)
+          #    Kernel tetap bisa boot tanpa state machine modem-SCP ini.
+          echo "=== Sebelum: ccci_fsm_scp di Makefile? ==="
+          grep -rn "ccci_fsm_scp" drivers/misc/mediatek/eccci/fsm/Makefile* drivers/misc/mediatek/eccci/fsm/Kbuild* 2>/dev/null || echo "  (tidak ada referensi di Makefile/Kbuild)"
+          sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile 2>/dev/null || true
+          sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild 2>/dev/null || true
+          sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile.inc 2>/dev/null || true
+          echo "=== Sesudah: ccci_fsm_scp di Makefile? ==="
+          grep -rn "ccci_fsm_scp" drivers/misc/mediatek/eccci/fsm/ 2>/dev/null || echo "  (sudah bersih — file tidak ikut di-build)"
+          # 4) Hapus stub scp_ipi.h yang tidak diperlukan lagi (file-nya sudah tidak di-build)
+          rm -f drivers/misc/mediatek/eccci/fsm/scp_ipi.h \
+                drivers/misc/mediatek/eccci/fsm/scp_ipi_wrapper.h \
+                drivers/misc/mediatek/eccci/fsm/scp_ipi_pin.h
+          echo "Prepare selesai."
 
       - name: Compile kernel
         run: |
