@@ -136,10 +136,14 @@ jobs:
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/common/Makefile 2>/dev/null || true
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/Makefile 2>/dev/null || true
           echo "connectivity_build_in_adapter dikeluarkan."
-          # 8) Keluarkan slog.c (aee/aed pakai seq_read/single_release yang dihapus kernel baru)
+          # 8) Keluarkan slog.c (aee/aed)
           sed -i '/slog/d' drivers/misc/mediatek/aee/aed/Makefile 2>/dev/null || true
           sed -i '/slog/d' drivers/misc/mediatek/aee/Makefile 2>/dev/null || true
           echo "slog dikeluarkan."
+          # 9) Keluarkan mrdump (aee/mrdump) — mini RAM dump, tidak kritis boot
+          sed -i '/mrdump/d' drivers/misc/mediatek/aee/Makefile 2>/dev/null || true
+          sed -i '/mrdump/d' drivers/misc/mediatek/aee/mrdump/Makefile 2>/dev/null || true
+          echo "mrdump dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
