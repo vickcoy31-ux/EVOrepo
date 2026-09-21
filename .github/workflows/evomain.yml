@@ -116,7 +116,7 @@ jobs:
           # 2) Patch SEMUA proc_compat_ioctl di drivers/misc/mediatek
           grep -rl 'proc_compat_ioctl' drivers/misc/mediatek/ 2>/dev/null | xargs -r sed -i '/proc_compat_ioctl/d'
           echo "proc_compat_ioctl patched."
-          # 3) Keluarkan ccci_fsm_scp.c (header vendor SCP tidak tersedia)
+          # 3) Keluarkan ccci_fsm_scp.c
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile.inc 2>/dev/null || true
@@ -129,10 +129,13 @@ jobs:
           # 5) lpm: asm/cpuidle.h butuh errno include
           sed -i '1i #include <linux/errno.h>' arch/arm64/include/asm/cpuidle.h 2>/dev/null || true
           echo "cpuidle.h patched."
-          # 6) Keluarkan SELURUH swpm (telemetri daya) — pakai API perf lama yang tidak tersedia
-          #    Bukan cuma swpm_perf_arm_pmu, tapi semua file swpm yang error.
+          # 6) Keluarkan SELURUH swpm
           sed -i '/swpm/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
-          echo "swpm seluruhnya dikeluarkan."
+          echo "swpm dikeluarkan."
+          # 7) Keluarkan connectivity_build_in_adapter.c (show_stack butuh 3 arg di kernel baru)
+          sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/common/Makefile 2>/dev/null || true
+          sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/Makefile 2>/dev/null || true
+          echo "connectivity_build_in_adapter dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
@@ -162,7 +165,7 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
           cd AnyKernel3
-          rm -rf .git .github *.rd
+          rm -rf .git .github *.md
           cp $GITHUB_WORKSPACE/gta9/out/arch/arm64/boot/Image ./
           printf '%s\n' \
             'properties() {' \
