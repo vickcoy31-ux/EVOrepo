@@ -92,10 +92,6 @@ jobs:
           scripts/config --file out/.config \
             -e CONFIG_CGROUPS \
             -e CONFIG_BLK_CGROUP
-          # Matikan GED KPI (butuh disp_arr.h yang di-generate build.sh Samsung)
-          echo "=== GED configs ==="
-          grep -i "GED" out/.config || true
-          scripts/config --file out/.config -d CONFIG_MTK_GED_KPI
           # Matikan Werror & debug
           sed -i 's/^CONFIG_WERROR=y/CONFIG_WERROR=n/g' out/.config
           scripts/config --file out/.config \
@@ -106,6 +102,23 @@ jobs:
           # Jawab otomatis semua opsi (NEW) dengan nilai default
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
+
+      - name: Prepare disp_arr.h stub
+        run: |
+          cd gta9
+          echo "=== GED Makefile gating (diagnostik) ==="
+          grep -rn "ged_kpi" drivers/gpu/mediatek/ged/Makefile* 2>/dev/null | head -10
+          echo "=== disp_arr references in ged_kpi.c (diagnostik) ==="
+          grep -n "disp_arr" drivers/gpu/mediatek/ged/src/ged_kpi.c 2>/dev/null | head -20
+          # Header ini normally di-generate oleh build.sh Samsung — kita buat stub-nya
+          cat > drivers/gpu/mediatek/ged/src/disp_arr.h << 'HDR_EOF'
+          #ifndef __DISP_ARR_H__
+          #define __DISP_ARR_H__
+          /* Stub dibuat CI workflow — file asli di-generate build system Samsung */
+          #endif
+          HDR_EOF
+          echo "Stub disp_arr.h created:"
+          ls -la drivers/gpu/mediatek/ged/src/disp_arr.h
 
       - name: Compile kernel
         run: |
