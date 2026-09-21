@@ -88,14 +88,18 @@ jobs:
           scripts/config --file out/.config \
             --set-str CONFIG_LOCALVERSION "-KSU-${{ steps.ksu_info.outputs.ksu_version }}" \
             --disable CONFIG_LOCALVERSION_AUTO
-          # Matikan Werror & debug biar build tidak mudah gagal
-          sed -i 's/CONFIG_WERROR=y/CONFIG_WERROR=n/g' out/.config
+          # Perbaiki ssg-iosched: aktifkan blkcg agar blkg_lookup memakai API asli
+          scripts/config --file out/.config \
+            -e CONFIG_CGROUPS \
+            -e CONFIG_BLK_CGROUP
+          # Matikan Werror & debug
+          sed -i 's/^CONFIG_WERROR=y/CONFIG_WERROR=n/g' out/.config
           scripts/config --file out/.config \
             --disable CONFIG_DEBUG_INFO \
             --disable CONFIG_DEBUG_INFO_SPLIT \
             --disable CONFIG_DEBUG_INFO_REDUCED \
             --disable CONFIG_DEBUG_INFO_DWARF4
-          # Jawab otomatis semua opsi (NEW) dengan nilai default — hilangkan prompt "Error in reading"
+          # Jawab otomatis semua opsi (NEW) dengan nilai default
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
 
@@ -114,7 +118,7 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            KCFLAGS="-w -Wno-incompatible-function-pointer-types" \
+            KCFLAGS="-w -Wno-incompatible-function-pointer-types -Wno-int-conversion" \
             Image 2>&1 | tee $GITHUB_WORKSPACE/compile.log
           if [ ! -f out/arch/arm64/boot/Image ]; then
             echo "::error::Build failed — kernel Image not found!"
@@ -135,7 +139,7 @@ jobs:
             do.modules=0
             do.cleanup=1
             do.cleanuponabort=1
-            device.name1=gta9
+            device.name1=gta
             device.name2=gta9wifi
             device.name3=SM-X110
             supported.versions=13-14
@@ -147,7 +151,7 @@ jobs:
           flash_boot
           AKEOF
           BUILD_DATE=$(date +%Y%m%d-%H%M)
-          ZIP_NAME="GTA9-KernelSU-${{ steps.ksu_info.outputs.ksu_version }}-${BUILD_DATE}.zip"
+          ZIP_NAME="GTA9-KernelSU-${{ steps.ksu_info.outputs.ksu_version }}—${BUILD_DATE}.zip"
           zip -r9 $GITHUB_WORKSPACE/$ZIP_NAME . -x '.git*'
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
