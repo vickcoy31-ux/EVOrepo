@@ -116,25 +116,21 @@ jobs:
           # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
           sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
           echo "blocktag patched."
-          # 3) scp_ipi.h — cari di tree dulu
-          SCP_HDR=$(find . -name "scp_ipi.h" 2>/dev/null | head -1)
-          if [ -n "$SCP_HDR" ]; then
-            echo "scp_ipi.h found: $SCP_HDR"
-            cp "$SCP_HDR" drivers/misc/mediatek/eccci/fsm/scp_ipi.h
-          else
-            echo "scp_ipi.h not found — creating stub"
-            printf '#ifndef __SCP_IPI_H__\n#define __SCP_IPI_H__\n/* Stub untuk CI */\n#endif\n' > drivers/misc/mediatek/eccci/fsm/scp_ipi.h
-          fi
-          # 4) scp_ipi_wrapper.h — di-include scp_ipi.h asli; cari di tree, kalau tidak ada buat stub
-          echo "=== Search scp_ipi_wrapper.h in tree ==="
-          SCP_WRAP=$(find . -name "scp_ipi_wrapper.h" 2>/dev/null | head -1)
-          if [ -n "$SCP_WRAP" ]; then
-            echo "scp_ipi_wrapper.h found: $SCP_WRAP"
-            cp "$SCP_WRAP" drivers/misc/mediatek/eccci/fsm/scp_ipi_wrapper.h
-          else
-            echo "scp_ipi_wrapper.h not found — creating stub"
-            printf '#ifndef __SCP_IPI_WRAPPER_H__\n#define __SCP_IPI_WRAPPER_H__\n/* Stub untuk CI */\n#endif\n' > drivers/misc/mediatek/eccci/fsm/scp_ipi_wrapper.h
-          fi
+          # 3) PUTUS RANTAI scp_ipi: stub mandiri + fungsi dummy
+          #    (rantai asli: scp_ipi.h -> scp_ipi_wrapper.h -> scp_ipi_pin.h -> ...)
+          ECCCI_FSM=drivers/misc/mediatek/eccci/fsm
+          FUNCS=$(grep -hoE 'scp_ipi_[a-zA-Z0-9_]+' drivers/misc/mediatek/eccci/ 2>/dev/null | sort -u)
+          {
+            printf '#ifndef __SCP_IPI_H__\n#define __SCP_IPI_H__\n'
+            printf '/* Stub CI: header SCP MediaTek tidak tersedia di tree */\n'
+            for fn in $FUNCS; do
+              printf 'static inline int %s(int x, ...) { (void)x; return 0; }\n' "$fn"
+            done
+            printf '#endif\n'
+          } > "$ECCCI_FSM/scp_ipi.h"
+          echo "Stub scp_ipi.h dibuat. Fungsi dummy: $FUNCS"
+          # Hapus header asli yang mungkin ter-copy sebelumnya (biar tidak menimpa stub)
+          rm -f "$ECCCI_FSM/scp_ipi_wrapper.h" "$ECCCI_FSM/scp_ipi_pin.h"
           echo "=== scp_ipi calls in ccci_fsm_scp.c (diagnostik) ==="
           grep -n "scp_ipi" drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c | head -20 || echo "  (no scp_ipi calls found)"
           echo "=== includes in ccci_fsm_scp.c (diagnostik) ==="
@@ -155,7 +151,7 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            KCFLAGS="-w -Wno-incompatible-function-pointer-types -Wno-int-conversion" \
+            KCFLAGS="-w -Wno-incompatible-function-pointer-types -Wno-int-conversion -Wno-implicit-function-declaration" \
             Image 2>&1 | tee $GITHUB_WORKSPACE/compile.log
           if [ ! -f out/arch/arm64/boot/Image ]; then
             echo "::error::Build failed — kernel Image not found!"
