@@ -103,7 +103,7 @@ jobs:
             --disable CONFIG_DEBUG_INFO_SPLIT \
             --disable CONFIG_DEBUG_INFO_REDUCED \
             --disable CONFIG_DEBUG_INFO_DWARF4
-          # Jawab otomatis semua opsi (NEW) dengan nilai default
+          # Jawab otomatis semua opsi (NEW) dengan default
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
 
@@ -113,16 +113,21 @@ jobs:
           # 1) Stub disp_arr.h
           printf '#ifndef __DISP_ARR_H__\n#define __DISP_ARR_H__\n/* Stub dibuat CI workflow */\n#endif\n' > drivers/gpu/mediatek/ged/src/disp_arr.h
           echo "Stub disp_arr.h created."
-          # 2) Patch SEMUA file di drivers/misc/mediatek yang pakai proc_compat_ioctl
-          #    (field ini tidak ada di struct proc_ops kernel baru — blocktag, atf_log, dll.)
+          # 2) Patch SEMUA proc_compat_ioctl di drivers/misc/mediatek (blocktag, atf_log, dll)
           grep -rl 'proc_compat_ioctl' drivers/misc/mediatek/ 2>/dev/null | xargs -r sed -i '/proc_compat_ioctl/d'
-          echo "proc_compat_ioctl patched di seluruh tree mediatek."
-          # 3) KELUARKAN ccci_fsm_scp.c dari build (header vendor SCP tidak tersedia)
+          echo "proc_compat_ioctl patched."
+          # 3) Keluarkan ccci_fsm_scp.c (header vendor SCP tidak tersedia)
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile.inc 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild.inc 2>/dev/null || true
-          echo "ccci_fsm_scp dikeluarkan dari build."
+          echo "ccci_fsm_scp dikeluarkan."
+          # 4) Keluarkan camera_mfb.c (butuh struct MFB_MapTable yang tidak pernah didefinisikan)
+          CAM=$(find drivers/misc/mediatek/cameraisp -name "Makefile*" 2>/dev/null | head -1)
+          sed -i '/camera_mfb/d' drivers/misc/mediatek/cameraisp/mfb/isp_6s/Makefile 2>/dev/null || true
+          sed -i '/camera_mfb/d' drivers/misc/mediatek/cameraisp/mfb/Makefile 2>/dev/null || true
+          sed -i '/camera_mfb/d' "$CAM" 2>/dev/null || true
+          echo "camera_mfb.c dikeluarkan dari build."
           echo "Prepare selesai."
 
       - name: Compile kernel
