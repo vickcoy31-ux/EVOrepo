@@ -110,18 +110,18 @@ jobs:
       - name: Prepare stubs & patches
         run: |
           cd gta9
-          # 1) Stub disp_arr.h — delimiter DISP_EOF (unik)
-          cat > drivers/gpu/mediatek/ged/src/disp_arr.h << 'DISP_EOF'
-          #ifndef __DISP_ARR_H__
-          #define __DISP_ARR_H__
-          /* Stub dibuat CI workflow — file asli di-generate build system Samsung */
-          #endif
-          DISP_EOF
+          # 1) Stub disp_arr.h — delimiter DISP_EOF di kolom 0
+          cat > drivers/gpu/mediatek/ged/src/disp_arr.h <<'DISP_EOF'
+#ifndef __DISP_ARR_H__
+#define __DISP_ARR_H__
+/* Stub dibuat CI workflow — file asli di-generate build system Samsung */
+#endif
+DISP_EOF
           echo "Stub disp_arr.h created."
           # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
           sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
           echo "blocktag patched."
-          # 3) scp_ipi.h untuk ccci_fsm_scp — delimiter SCP_EOF (unik, BUKAN HDR_EOF!)
+          # 3) scp_ipi.h untuk ccci_fsm_scp — delimiter SCP_EOF di kolom 0
           echo "=== Search scp_ipi.h in tree ==="
           SCP_HDR=$(find . -name "scp_ipi.h" 2>/dev/null | head -1)
           if [ -n "$SCP_HDR" ]; then
@@ -129,12 +129,12 @@ jobs:
             cp "$SCP_HDR" drivers/misc/mediatek/eccci/fsm/scp_ipi.h
           else
             echo "Not found — creating stub"
-            cat > drivers/misc/mediatek/eccci/fsm/scp_ipi.h << 'SCP_EOF'
-            #ifndef __SCP_IPI_H__
-            #define __SCP_IPI_H__
-            /* Stub untuk CI — header SCP MediaTek tidak tersedia di tree ini */
-            #endif
-            SCP_EOF
+            cat > drivers/misc/mediatek/eccci/fsm/scp_ipi.h <<'SCP_EOF'
+#ifndef __SCP_IPI_H__
+#define __SCP_IPI_H__
+/* Stub untuk CI — header SCP MediaTek tidak tersedia di tree ini */
+#endif
+SCP_EOF
           fi
           echo "=== scp_ipi calls in ccci_fsm_scp.c (diagnostik) ==="
           grep -n "scp_ipi" drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.c | head -20 || echo "  (no scp_ipi calls found)"
