@@ -113,17 +113,16 @@ jobs:
           # 1) Stub disp_arr.h
           printf '#ifndef __DISP_ARR_H__\n#define __DISP_ARR_H__\n/* Stub dibuat CI workflow */\n#endif\n' > drivers/gpu/mediatek/ged/src/disp_arr.h
           echo "Stub disp_arr.h created."
-          # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
-          sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
-          echo "blocktag patched."
+          # 2) Patch SEMUA file di drivers/misc/mediatek yang pakai proc_compat_ioctl
+          #    (field ini tidak ada di struct proc_ops kernel baru — blocktag, atf_log, dll.)
+          grep -rl 'proc_compat_ioctl' drivers/misc/mediatek/ 2>/dev/null | xargs -r sed -i '/proc_compat_ioctl/d'
+          echo "proc_compat_ioctl patched di seluruh tree mediatek."
           # 3) KELUARKAN ccci_fsm_scp.c dari build (header vendor SCP tidak tersedia)
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile.inc 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild.inc 2>/dev/null || true
-          rm -f drivers/misc/mediatek/eccci/fsm/scp_ipi.h \
-                drivers/misc/mediatek/eccci/fsm/scp_ipi_wrapper.h \
-                drivers/misc/mediatek/eccci/fsm/scp_ipi_pin.h
+          echo "ccci_fsm_scp dikeluarkan dari build."
           echo "Prepare selesai."
 
       - name: Compile kernel
