@@ -113,7 +113,7 @@ jobs:
           # 1) Stub disp_arr.h
           printf '#ifndef __DISP_ARR_H__\n#define __DISP_ARR_H__\n/* Stub dibuat CI workflow */\n#endif\n' > drivers/gpu/mediatek/ged/src/disp_arr.h
           echo "Stub disp_arr.h created."
-          # 2) Patch SEMUA proc_compat_ioctl di drivers/misc/mediatek (blocktag, atf_log, dll)
+          # 2) Patch SEMUA proc_compat_ioctl di drivers/misc/mediatek
           grep -rl 'proc_compat_ioctl' drivers/misc/mediatek/ 2>/dev/null | xargs -r sed -i '/proc_compat_ioctl/d'
           echo "proc_compat_ioctl patched."
           # 3) Keluarkan ccci_fsm_scp.c (header vendor SCP tidak tersedia)
@@ -122,12 +122,16 @@ jobs:
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile.inc 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild.inc 2>/dev/null || true
           echo "ccci_fsm_scp dikeluarkan."
-          # 4) Keluarkan camera_mfb.c (butuh struct MFB_MapTable yang tidak pernah didefinisikan)
-          CAM=$(find drivers/misc/mediatek/cameraisp -name "Makefile*" 2>/dev/null | head -1)
+          # 4) Keluarkan camera_mfb.c (struct MFB_MapTable tidak pernah didefinisikan)
           sed -i '/camera_mfb/d' drivers/misc/mediatek/cameraisp/mfb/isp_6s/Makefile 2>/dev/null || true
           sed -i '/camera_mfb/d' drivers/misc/mediatek/cameraisp/mfb/Makefile 2>/dev/null || true
-          sed -i '/camera_mfb/d' "$CAM" 2>/dev/null || true
-          echo "camera_mfb.c dikeluarkan dari build."
+          echo "camera_mfb dikeluarkan."
+          # 5) lpm: asm/cpuidle.h pakai EOPNOTSUPP tapi tidak include errno — sisipkan include
+          sed -i '1i #include <linux/errno.h>' arch/arm64/include/asm/cpuidle.h
+          echo "cpuidle.h patched (errno include)."
+          # 6) swpm: swpm_perf_arm_pmu.c pakai API perf lama — keluarkan dari build
+          grep -rl 'swpm_perf_arm_pmu' drivers/misc/mediatek/swpm/ 2>/dev/null | xargs -r sed -i '/swpm_perf_arm_pmu/d'
+          echo "swpm_perf_arm_pmu dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
