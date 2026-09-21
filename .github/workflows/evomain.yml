@@ -107,25 +107,20 @@ jobs:
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
 
-            - name: Prepare stubs & patches
+      - name: Prepare stubs & patches
         run: |
           cd gta9
-          # 1) Stub disp_arr.h (printf — tanpa heredoc)
+          # 1) Stub disp_arr.h
           printf '#ifndef __DISP_ARR_H__\n#define __DISP_ARR_H__\n/* Stub dibuat CI workflow */\n#endif\n' > drivers/gpu/mediatek/ged/src/disp_arr.h
           echo "Stub disp_arr.h created."
           # 2) blocktag-index: proc_ops tidak punya proc_compat_ioctl di kernel ini
           sed -i '/proc_compat_ioctl/d' drivers/misc/mediatek/blocktag/*.c
           echo "blocktag patched."
-          # 3) KELUARKAN ccci_fsm_scp.c dari build (butuh header vendor SCP yang tidak tersedia)
-          #    Kernel tetap bisa boot tanpa state machine modem-SCP ini.
-          echo "=== Sebelum: ccci_fsm_scp di Makefile? ==="
-          grep -rn "ccci_fsm_scp" drivers/misc/mediatek/eccci/fsm/Makefile* drivers/misc/mediatek/eccci/fsm/Kbuild* 2>/dev/null || echo "  (tidak ada referensi di Makefile/Kbuild)"
+          # 3) KELUARKAN ccci_fsm_scp.c dari build (header vendor SCP tidak tersedia)
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild 2>/dev/null || true
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile.inc 2>/dev/null || true
-          echo "=== Sesudah: ccci_fsm_scp di Makefile? ==="
-          grep -rn "ccci_fsm_scp" drivers/misc/mediatek/eccci/fsm/ 2>/dev/null || echo "  (sudah bersih — file tidak ikut di-build)"
-          # 4) Hapus stub scp_ipi.h yang tidak diperlukan lagi (file-nya sudah tidak di-build)
+          sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Kbuild.inc 2>/dev/null || true
           rm -f drivers/misc/mediatek/eccci/fsm/scp_ipi.h \
                 drivers/misc/mediatek/eccci/fsm/scp_ipi_wrapper.h \
                 drivers/misc/mediatek/eccci/fsm/scp_ipi_pin.h
