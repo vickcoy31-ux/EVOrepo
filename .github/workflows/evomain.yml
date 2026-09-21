@@ -132,10 +132,14 @@ jobs:
           # 6) Keluarkan SELURUH swpm
           sed -i '/swpm/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           echo "swpm dikeluarkan."
-          # 7) Keluarkan connectivity_build_in_adapter.c (show_stack butuh 3 arg di kernel baru)
+          # 7) Keluarkan connectivity_build_in_adapter.c
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/common/Makefile 2>/dev/null || true
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/Makefile 2>/dev/null || true
           echo "connectivity_build_in_adapter dikeluarkan."
+          # 8) Keluarkan slog.c (aee/aed pakai seq_read/single_release yang dihapus kernel baru)
+          sed -i '/slog/d' drivers/misc/mediatek/aee/aed/Makefile 2>/dev/null || true
+          sed -i '/slog/d' drivers/misc/mediatek/aee/Makefile 2>/dev/null || true
+          echo "slog dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
