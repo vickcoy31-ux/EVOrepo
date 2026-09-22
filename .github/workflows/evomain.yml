@@ -149,9 +149,13 @@ jobs:
           sed -i '/vow/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           sed -i '/vow/d' drivers/misc/mediatek/vow/ver02/Makefile 2>/dev/null || true
           echo "vow dikeluarkan."
-          # 11) Keluarkan SELURUH folder sched (eas + fair + lainnya pakai API uclamp lama)
+          # 11) Keluarkan SELURUH folder sched
           sed -i '/sched/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           echo "sched seluruhnya dikeluarkan."
+          # 12) Keluarkan task_turbo (pakai android_vendor_data1 yang tidak ada)
+          sed -i '/task_turbo/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
+          sed -i '/task_turbo/d' drivers/misc/mediatek/task_turbo/Makefile 2>/dev/null || true
+          echo "task_turbo dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
