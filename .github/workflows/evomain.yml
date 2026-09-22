@@ -149,10 +149,9 @@ jobs:
           sed -i '/vow/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           sed -i '/vow/d' drivers/misc/mediatek/vow/ver02/Makefile 2>/dev/null || true
           echo "vow dikeluarkan."
-          # 11) Keluarkan sched/eas (pakai API uclamp lama dihapus kernel baru)
-          sed -i '/eas/d' drivers/misc/mediatek/sched/Makefile 2>/dev/null || true
-          sed -i '/sched\/eas/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
-          echo "sched/eas dikeluarkan."
+          # 11) Keluarkan SELURUH folder sched (eas + fair + lainnya pakai API uclamp lama)
+          sed -i '/sched/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
+          echo "sched seluruhnya dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
