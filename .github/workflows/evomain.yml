@@ -111,6 +111,9 @@ jobs:
         run: |
           cd gta9
           # 1) Stub disp_arr.h
+          # 13) Buang frame_sync_algo varian src-v4l2 (duplicate symbol fs_alg_*)
+          sed -i '/frame_sync_algo/d' drivers/misc/mediatek/imgsensor/src-v4l2/frame-sync/Makefile 2>/dev/null || true
+          echo "frame_sync_algo src-v4l2 dibuang."
           printf '#ifndef __DISP_ARR_H__\n#define __DISP_ARR_H__\n/* Stub dibuat CI workflow */\n#endif\n' > drivers/gpu/mediatek/ged/src/disp_arr.h
           echo "Stub disp_arr.h created."
           # 2) Patch SEMUA proc_compat_ioctl di drivers/misc/mediatek
