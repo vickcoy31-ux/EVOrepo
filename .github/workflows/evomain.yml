@@ -136,15 +136,19 @@ jobs:
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/common/Makefile 2>/dev/null || true
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/Makefile 2>/dev/null || true
           echo "connectivity_build_in_adapter dikeluarkan."
-          # 8) Keluarkan SELURUH aee (aed/mrdump/hangdet) — Android Exception Engine
+          # 8) Keluarkan SELURUH aee (aed/mrdump/hangdet)
           sed -i '/aee/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           echo "aee dikeluarkan."
-          # 9) Keluarkan extcon-mtk-usb (g_extcon undeclared) + mkp (API module lama dihapus)
+          # 9) Keluarkan extcon-mtk-usb + mkp
           sed -i '/extcon-mtk-usb/d' drivers/misc/mediatek/extcon/Makefile 2>/dev/null || true
           sed -i '/extcon/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           sed -i '/mkp/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           sed -i '/mkp/d' drivers/misc/mediatek/mkp/Makefile 2>/dev/null || true
           echo "extcon-mtk-usb & mkp dikeluarkan."
+          # 10) Keluarkan vow (Voice on Wakeup — butuh mt-plat/aee.h yang tidak ada)
+          sed -i '/vow/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
+          sed -i '/vow/d' drivers/misc/mediatek/vow/ver02/Makefile 2>/dev/null || true
+          echo "vow dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
