@@ -156,10 +156,9 @@ jobs:
           sed -i '/task_turbo/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           sed -i '/task_turbo/d' drivers/misc/mediatek/task_turbo/Makefile 2>/dev/null || true
           echo "task_turbo dikeluarkan."
-          # 13) Hapus FILE frame_sync dari src-v4l2 (duplicate symbol fs_*)
-          rm -f drivers/misc/mediatek/imgsensor/src-v4l2/frame-sync/frame_sync.c
-          rm -f drivers/misc/mediatek/imgsensor/src-v4l2/frame-sync/frame_sync_algo.c
-          echo "frame_sync src-v4l2 dihapus."
+          # 13) HAPUS SELURUH folder src-v4l2 imgsensor (varian duplikat, banyak error)
+          rm -rf drivers/misc/mediatek/imgsensor/src-v4l2
+          echo "imgsensor src-v4l2 dihapus total."
           echo "Prepare selesai."
 
       - name: Compile kernel
