@@ -136,7 +136,7 @@ jobs:
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/common/Makefile 2>/dev/null || true
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/Makefile 2>/dev/null || true
           echo "connectivity_build_in_adapter dikeluarkan."
-          # 8) Keluarkan SELURUH aee (aed/mrdump/hangdet)
+          # 8) Keluarkan SELURUH aee
           sed -i '/aee/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           echo "aee dikeluarkan."
           # 9) Keluarkan extcon-mtk-usb + mkp
@@ -145,10 +145,14 @@ jobs:
           sed -i '/mkp/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           sed -i '/mkp/d' drivers/misc/mediatek/mkp/Makefile 2>/dev/null || true
           echo "extcon-mtk-usb & mkp dikeluarkan."
-          # 10) Keluarkan vow (Voice on Wakeup — butuh mt-plat/aee.h yang tidak ada)
+          # 10) Keluarkan vow
           sed -i '/vow/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
           sed -i '/vow/d' drivers/misc/mediatek/vow/ver02/Makefile 2>/dev/null || true
           echo "vow dikeluarkan."
+          # 11) Keluarkan sched/eas (pakai API uclamp lama dihapus kernel baru)
+          sed -i '/eas/d' drivers/misc/mediatek/sched/Makefile 2>/dev/null || true
+          sed -i '/sched\/eas/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
+          echo "sched/eas dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
