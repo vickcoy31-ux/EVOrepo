@@ -136,9 +136,15 @@ jobs:
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/common/Makefile 2>/dev/null || true
           sed -i '/connectivity_build_in_adapter/d' drivers/misc/mediatek/connectivity/Makefile 2>/dev/null || true
           echo "connectivity_build_in_adapter dikeluarkan."
-          # 8) Keluarkan SELURUH aee (aed/mrdump/hangdet) — Android Exception Engine, debug crash-reporting saja
+          # 8) Keluarkan SELURUH aee (aed/mrdump/hangdet) — Android Exception Engine
           sed -i '/aee/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
-          echo "aee (aed/mrdump/hangdet) dikeluarkan."
+          echo "aee dikeluarkan."
+          # 9) Keluarkan extcon-mtk-usb (g_extcon undeclared) + mkp (API module lama dihapus)
+          sed -i '/extcon-mtk-usb/d' drivers/misc/mediatek/extcon/Makefile 2>/dev/null || true
+          sed -i '/extcon/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
+          sed -i '/mkp/d' drivers/misc/mediatek/Makefile 2>/dev/null || true
+          sed -i '/mkp/d' drivers/misc/mediatek/mkp/Makefile 2>/dev/null || true
+          echo "extcon-mtk-usb & mkp dikeluarkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
