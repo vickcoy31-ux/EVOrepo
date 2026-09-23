@@ -119,6 +119,9 @@ jobs:
             --disable CONFIG_DEBUG_INFO_DWARF4
           # MATIKAN v4l2 imgsensor (sumber duplikat + src-v4l2 bermasalah)
           scripts/config --file out/.config --disable CONFIG_MTK_V4L2_IMGSENSOR
+          # Matikan VCP & gauge dobel (GTA9/MT6789: SCP + MT6358 cukup)
+          scripts/config --file out/.config --disable CONFIG_MTK_TINYSYS_VCP_SUPPORT
+          scripts/config --file out/.config --disable CONFIG_GAUGE_MT6375
           # Jawab otomatis semua opsi (NEW) dengan default
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
@@ -181,7 +184,11 @@ jobs:
           rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.h
           rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6873.c
           echo "cmdq-platform mt6853 + mt6873 dibuang, mt6789 dipertahankan."
-                    echo "Prepare selesai."
+                    # 15) usb_boost: buang objek musb (dobel dgn usb_boost_common)
+          sed -i "/musb_boost/d" drivers/misc/mediatek/usb_boost/Makefile 2>/dev/null || true
+          sed -i "/musb_boost/d" drivers/misc/mediatek/usb_boost/Kconfig 2>/dev/null || true
+          echo "musb_boost dibuang."
+          echo "Prepare selesai."
 
       - name: Compile kernel
         run: |
