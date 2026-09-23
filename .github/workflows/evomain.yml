@@ -176,9 +176,9 @@ jobs:
           rm -rf drivers/misc/mediatek/imgsensor/src-v4l2
           sed -i "/src-v4l2/d" drivers/misc/mediatek/imgsensor/Makefile 2>/dev/null || true
           echo "imgsensor src-v4l2 dihapus total + referensi dibersihkan."
-          # 14) Hapus cmdq-platform mt6853 (Tab A9 pakai MT6789, ini dobel simbol)
-          sed -i "/cmdq-platform-mt6853/d" drivers/misc/mediatek/cmdq/mailbox/Makefile 2>/dev/null || true
-          sed -i "/cmdq-platform-mt6853/d" drivers/misc/mediatek/cmdq/Makefile 2>/dev/null || true
+          # 14) Hapus cmdq-platform mt6853 (Tab A9 pakai MT6789; hapus FILE bukan baris Makefile biar ifneq/endif aman)
+          rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.c
+          rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.h
           echo "cmdq-platform mt6853 dibuang, mt6789 dipertahankan."
           echo "Prepare selesai."
 
