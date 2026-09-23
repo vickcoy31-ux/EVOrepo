@@ -193,7 +193,7 @@ jobs:
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            KCFLAGS="-w -Wno-incompatible-function-pointer-types -Wno-int-conversion -Wno-implicit-function-declaration" \
+            KCFLAGS="-w -fcommon -Wno-incompatible-function-pointer-types -Wno-int-conversion -Wno-implicit-function-declaration" \
             Image 2>&1 | tee $GITHUB_WORKSPACE/compile.log
           if [ ! -f out/arch/arm64/boot/Image ]; then
             echo "::error::Build failed — kernel Image not found!"
