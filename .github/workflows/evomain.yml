@@ -54,8 +54,22 @@ jobs:
       - name: Integrate KernelSU via setup.sh
         run: |
           cd gta9
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s "${{ steps.ksu_info.outputs.ksu_version }}" || \
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s
+          KSU_TAG="${{ steps.ksu_info.outputs.ksu_version }}"
+          # Manual integrasi (fix divergent branches yg bikin setup.sh gagal)
+          rm -rf KernelSU
+          git clone --depth=1 https://github.com/tiann/KernelSU.git KernelSU
+          cd KernelSU
+          if [ -n "$KSU_TAG" ] && [ "$KSU_TAG" != "main" ]; then
+            git fetch --depth 1 origin tag "$KSU_TAG" || true
+            git checkout -f "$KSU_TAG" 2>/dev/null || git checkout -f FETCH_HEAD 2>/dev/null || true
+            echo "KernelSU tag: $(git describe --tags 2>/dev/null || echo $KSU_TAG)"
+          else
+            git checkout -f main 2>/dev/null || true
+          fi
+          cd ..
+          ln -sf "$(realpath --relative-to="$PWD/drivers" "$PWD/KernelSU/kernel")" drivers/kernelsu
+          grep -q "kernelsu" drivers/Makefile || printf "\nobj-\$(CONFIG_KSU) += kernelsu/\n" >> drivers/Makefile
+          grep -q "drivers/kernelsu/Kconfig" drivers/Kconfig || sed -i "/endmenu/i\source \"drivers/kernelsu/Kconfig\"" drivers/Kconfig
           ls -la KernelSU/kernel/ 2>/dev/null || ls -la drivers/kernelsu/ 2>/dev/null
 
       - name: Setup Clang toolchain
@@ -103,6 +117,8 @@ jobs:
             --disable CONFIG_DEBUG_INFO_SPLIT \
             --disable CONFIG_DEBUG_INFO_REDUCED \
             --disable CONFIG_DEBUG_INFO_DWARF4
+          # MATIKAN v4l2 imgsensor (sumber duplikat + src-v4l2 bermasalah)
+          scripts/config --file out/.config --disable CONFIG_MTK_V4L2_IMGSENSOR
           # Jawab otomatis semua opsi (NEW) dengan default
           make O=out ARCH=arm64 olddefconfig
           echo "Configuration complete."
@@ -114,7 +130,7 @@ jobs:
           printf '#ifndef __DISP_ARR_H__\n#define __DISP_ARR_H__\n/* Stub dibuat CI workflow */\n#endif\n' > drivers/gpu/mediatek/ged/src/disp_arr.h
           echo "Stub disp_arr.h created."
           # 2) Patch SEMUA proc_compat_ioctl di drivers/misc/mediatek
-          grep -rl 'proc_compat_ioctl' drivers/misc/mediatek/ 2>/dev/null | xargs -r sed -i '/proc_compat_ioctl/d'
+          grep -rl 'proc_compat_ioctl' drivers/misc/mediatek/ 2>/dev/null | xargs -r sed -i '/proc_compat_ioctl/d' || true
           echo "proc_compat_ioctl patched."
           # 3) Keluarkan ccci_fsm_scp.c
           sed -i '/ccci_fsm_scp/d' drivers/misc/mediatek/eccci/fsm/Makefile 2>/dev/null || true
@@ -158,7 +174,8 @@ jobs:
           echo "task_turbo dikeluarkan."
           # 13) HAPUS SELURUH folder src-v4l2 imgsensor (varian duplikat, banyak error)
           rm -rf drivers/misc/mediatek/imgsensor/src-v4l2
-          echo "imgsensor src-v4l2 dihapus total."
+          sed -i "/src-v4l2/d" drivers/misc/mediatek/imgsensor/Makefile 2>/dev/null || true
+          echo "imgsensor src-v4l2 dihapus total + referensi dibersihkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
