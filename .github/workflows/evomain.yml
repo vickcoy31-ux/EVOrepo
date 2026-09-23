@@ -179,7 +179,11 @@ jobs:
           # 14) Hapus cmdq-platform mt6853 (Tab A9 pakai MT6789; hapus FILE bukan baris Makefile biar ifneq/endif aman)
           rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.c
           rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.h
-          echo "cmdq-platform mt6853 dibuang, mt6789 dipertahankan."
+          rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6873.c
+          echo "cmdq-platform mt6853 + mt6873 dibuang, mt6789 dipertahankan."
+          # 15) Hapus dobel-sumber lain yg bikin duplicate symbol
+          rm -f drivers/misc/mediatek/lens/vcm/proprietary/main/common/dw9763af/DW9763AF.c 2>/dev/null || true
+          echo "dobel lens/cam_cal dibersihkan."
           echo "Prepare selesai."
 
       - name: Compile kernel
@@ -198,6 +202,7 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             KCFLAGS="-w -fcommon -Wno-incompatible-function-pointer-types -Wno-int-conversion -Wno-implicit-function-declaration" \
+            KBUILD_LDFLAGS="-Wl,--allow-multiple-definition" \
             Image 2>&1 | tee $GITHUB_WORKSPACE/compile.log
           if [ ! -f out/arch/arm64/boot/Image ]; then
             echo "::error::Build failed — kernel Image not found!"
