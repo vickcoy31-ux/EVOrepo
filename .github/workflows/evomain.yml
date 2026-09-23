@@ -181,10 +181,7 @@ jobs:
           rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.h
           rm -f drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6873.c
           echo "cmdq-platform mt6853 + mt6873 dibuang, mt6789 dipertahankan."
-          # 15) Hapus dobel-sumber lain yg bikin duplicate symbol
-          rm -f drivers/misc/mediatek/lens/vcm/proprietary/main/common/dw9763af/DW9763AF.c 2>/dev/null || true
-          echo "dobel lens/cam_cal dibersihkan."
-          echo "Prepare selesai."
+                    echo "Prepare selesai."
 
       - name: Compile kernel
         run: |
